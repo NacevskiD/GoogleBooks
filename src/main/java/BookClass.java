@@ -11,6 +11,7 @@ public class BookClass {
     String isbn;
     Double rating;
     String buyLink;
+
     BookClass(String title, String author,String publisher,String description,String isbn,Double rating,String buyLink){
         this.title = title;
         this.author = author;

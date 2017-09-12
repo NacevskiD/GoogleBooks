@@ -45,8 +45,6 @@ public class BookGUI extends JFrame{
     ArrayList<BookClass> allBooks = new ArrayList<BookClass>();
 
 
-
-
     BookGUI(){
         populateSearchType();
 
@@ -65,7 +63,20 @@ public class BookGUI extends JFrame{
                 googleBooksModel.clear();
                 String query = searchText.getText();
                 String formatedQuery = formatQuery(query);
-                findBook(formatedQuery);
+                if (searchType ==0) {
+                    findBook(formatedQuery);
+                }
+                else if (searchType == 1){
+                    findBookByISBN(query);
+
+                }
+                else if(searchType ==2){
+                    findBOoksByAuthor(query);
+
+                }
+                else if (searchType == 3){
+                    findBooksByGenre(query);
+                }
                 setListData(allBooks);
             }
         });
@@ -99,6 +110,7 @@ public class BookGUI extends JFrame{
         searchList.add("Title");
         searchList.add("ISBN");
         searchList.add("Author");
+        searchList.add("Genre");
 
         for (String item : searchList){
             searchBy.addItem(item);
@@ -109,10 +121,6 @@ public class BookGUI extends JFrame{
         query = query.replaceAll("\\s","+");
         return query;
     }
-
-
-
-
     private String getKey(){
         try {
             BufferedReader bufferedReader = new BufferedReader(new FileReader("key.txt"));
@@ -135,7 +143,7 @@ public class BookGUI extends JFrame{
 
 
     void setListData(ArrayList<BookClass> data){
-        googleBooksModel.clear();
+
         String[] names = new String[data.size()];
         int count = 0;
         for (BookClass book:data){
@@ -170,19 +178,28 @@ public class BookGUI extends JFrame{
                 builder.append(line);
             }
         }catch (IOException ioe){
-            statusLabel.setText("Problem");
+            System.out.println("Problem");
         }
         String responseString = builder.toString();
 
 
         JSONObject jsonObject = new JSONObject(responseString);
+        System.out.println(jsonObject.length());
+
         JSONArray items = jsonObject.getJSONArray("items");
 
         for (int count = 0; count != items.length();count++) {
             JSONObject volumeInfo = items.getJSONObject(count).getJSONObject("volumeInfo");
             String id = items.getJSONObject(count).getString("id");
             String title = volumeInfo.getString("title");
-            String description = volumeInfo.getString("description");
+            String description = "";
+            try {
+                description = volumeInfo.getString("description");
+            }catch (JSONException jse){
+                description = "NA";
+            }
+
+
             String publisher = "not found";
             try{
             publisher = volumeInfo.getString("publisher");
@@ -191,6 +208,7 @@ public class BookGUI extends JFrame{
             }
             String authors = "";
             String isbn;
+
             JSONArray authorList = new JSONArray();
             try {
                 authorList = volumeInfo.getJSONArray("authors");
@@ -306,6 +324,8 @@ public class BookGUI extends JFrame{
     }
 
 
+
+
     private void displaySelectedBook(int selected){
         bookNameTextArea.setText(allBooks.get(selected).title);
         authorTextArea.setText(allBooks.get(selected).author);
@@ -315,4 +335,219 @@ public class BookGUI extends JFrame{
         descriptionTextArea.setText(allBooks.get(selected).description);
         buyLinkTextArea.setText(allBooks.get(selected).buyLink);
     }
+
+    private void findBookByISBN(String isbn){
+        String key = getKey();
+        String baseURL = "https://www.googleapis.com/books/v1/volumes?q=isbn:%s&key=%s";
+        String url = String.format(baseURL, isbn, key);
+        InputStream stream = null;
+        try {
+            stream = new URL(url).openConnection().getInputStream();
+
+        }
+        catch (IOException ioe){
+            statusLabel.setText("IO exception");
+        }
+        InputStreamReader reader = new InputStreamReader(stream);
+        BufferedReader bufferedReader = new BufferedReader(reader);
+
+        StringBuilder builder = new StringBuilder();
+
+        String line;
+        try {
+            while ((line = bufferedReader.readLine()) != null) {
+                builder.append(line);
+            }
+        }catch (IOException ioe){
+            statusLabel.setText("Problem");
+        }
+        String responseString = builder.toString();
+
+
+        JSONObject jsonObject = new JSONObject(responseString);
+        JSONArray items = jsonObject.getJSONArray("items");
+
+
+            JSONObject volumeInfo = items.getJSONObject(0).getJSONObject("volumeInfo");
+            String id = items.getJSONObject(0).getString("id");
+            String title = volumeInfo.getString("title");
+            String description = volumeInfo.getString("description");
+            String publisher = "not found";
+            try{
+                publisher = volumeInfo.getString("publisher");
+            }catch (JSONException jse){
+                System.out.println("Publisher not found");
+            }
+            String authors = "";
+            JSONArray authorList = new JSONArray();
+            try {
+                authorList = volumeInfo.getJSONArray("authors");
+            }catch (JSONException je) {
+                System.out.println("No author(s) listed for this book.");
+            }
+
+            for (Object author:authorList){
+                author = author.toString();
+                authors += author+", ";
+            }
+            authors = authors.substring(0, authors.length() - 2);
+
+
+            double googleRating = 0;
+            try{
+                googleRating = volumeInfo.getDouble("averageRating");
+            }catch (JSONException je) {
+                System.out.println("No rating provided for this book.");
+            }
+            isbn = getIsbn(id);
+            String buyLink = getBuyLink(id);
+
+            BookClass book = new BookClass(title,authors,publisher,description,isbn,googleRating,buyLink);
+            allBooks.add(book);
+    }
+
+    private void findBOoksByAuthor(String author){
+        String key = getKey();
+        String baseURL = "https://www.googleapis.com/books/v1/volumes?q=inauthor:%s&key=%s";
+        String url = String.format(baseURL, author, key);
+        InputStream stream = null;
+        try {
+            stream = new URL(url).openConnection().getInputStream();
+
+        }
+        catch (IOException ioe){
+            statusLabel.setText("IO exception");
+        }
+        InputStreamReader reader = new InputStreamReader(stream);
+        BufferedReader bufferedReader = new BufferedReader(reader);
+
+        StringBuilder builder = new StringBuilder();
+
+        String line;
+        try {
+            while ((line = bufferedReader.readLine()) != null) {
+                builder.append(line);
+            }
+        }catch (IOException ioe){
+            statusLabel.setText("Problem");
+        }
+        String responseString = builder.toString();
+
+
+        JSONObject jsonObject = new JSONObject(responseString);
+        JSONArray items = jsonObject.getJSONArray("items");
+
+        for (int count = 0; count != items.length();count++) {
+            JSONObject volumeInfo = items.getJSONObject(count).getJSONObject("volumeInfo");
+            String id = items.getJSONObject(count).getString("id");
+            String title = volumeInfo.getString("title");
+            String description = "";
+            try {
+                description = volumeInfo.getString("description");
+            }catch (JSONException jse){
+                description = "NA";
+            }
+            String publisher = "not found";
+            try{
+                publisher = volumeInfo.getString("publisher");
+            }catch (JSONException jse){
+                System.out.println("Publisher not found");
+            }
+
+            String isbn;
+
+            double googleRating = 0;
+            try{
+                googleRating = volumeInfo.getDouble("averageRating");
+            }catch (JSONException je) {
+                System.out.println("No rating provided for this book.");
+            }
+            isbn = getIsbn(id);
+            String buyLink = getBuyLink(id);
+
+            BookClass book = new BookClass(title,author,publisher,description,isbn,googleRating,buyLink);
+            allBooks.add(book);
+    }
 }
+
+    private void findBooksByGenre(String subject){
+        String key = getKey();
+        String baseURL = "https://www.googleapis.com/books/v1/volumes?q=subject:%s&key=%s";
+        String url = String.format(baseURL, subject, key);
+        InputStream stream = null;
+        try {
+            stream = new URL(url).openConnection().getInputStream();
+
+        }
+        catch (IOException ioe){
+            statusLabel.setText("IO exception");
+        }
+        InputStreamReader reader = new InputStreamReader(stream);
+        BufferedReader bufferedReader = new BufferedReader(reader);
+
+        StringBuilder builder = new StringBuilder();
+
+        String line;
+        try {
+            while ((line = bufferedReader.readLine()) != null) {
+                builder.append(line);
+            }
+        }catch (IOException ioe){
+            statusLabel.setText("Problem");
+        }
+        String responseString = builder.toString();
+
+
+        JSONObject jsonObject = new JSONObject(responseString);
+        JSONArray items = jsonObject.getJSONArray("items");
+
+        for (int count = 0; count != items.length();count++) {
+            JSONObject volumeInfo = items.getJSONObject(count).getJSONObject("volumeInfo");
+            String id = items.getJSONObject(count).getString("id");
+            String title = volumeInfo.getString("title");
+            String description = "";
+            try {
+                description = volumeInfo.getString("description");
+            }catch (JSONException jse){
+                description = "NA";
+            }
+            String publisher = "not found";
+            try{
+                publisher = volumeInfo.getString("publisher");
+            }catch (JSONException jse){
+                System.out.println("Publisher not found");
+            }
+            String authors = "";
+            JSONArray authorList = new JSONArray();
+            try {
+                authorList = volumeInfo.getJSONArray("authors");
+            }catch (JSONException je) {
+                System.out.println("No author(s) listed for this book.");
+            }
+
+            for (Object author:authorList){
+                author = author.toString();
+                authors += author+", ";
+            }
+            authors = authors.substring(0, authors.length() - 2);
+
+            String isbn;
+
+            double googleRating = 0;
+            try{
+                googleRating = volumeInfo.getDouble("averageRating");
+            }catch (JSONException je) {
+                System.out.println("No rating provided for this book.");
+            }
+            isbn = getIsbn(id);
+            String buyLink = getBuyLink(id);
+
+            BookClass book = new BookClass(title,authors,publisher,description,isbn,googleRating,buyLink);
+            allBooks.add(book);
+        }
+}
+}
+
+
+
+
