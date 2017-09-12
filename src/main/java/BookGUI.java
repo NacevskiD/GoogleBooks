@@ -7,6 +7,7 @@ import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.*;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 
@@ -16,81 +17,42 @@ import java.util.ArrayList;
 public class BookGUI extends JFrame{
 
     private JPanel mainPanel;
-    private JTabbedPane tabbedPane1;
-    private JPanel googleBooksTab;
-    private JPanel libraryTab;
     private JComboBox searchBy;
     private JTextField searchText;
     private JButton searchButton;
     private JButton addButton;
-    private JComboBox sortByComboBox;
     private JButton removeButton;
     private JScrollPane googleBooksList;
     private JLabel statusLabel;
-    private JList googleBooks;
-    private DefaultListModel googleBooksModel;
+    private JList<BookClass> googleBooks;
+    private DefaultListModel<BookClass> googleBooksModel;
+    ArrayList<BookClass> allBooks = new ArrayList<BookClass>();
 
-
-    BookGUI(){
-        setContentPane(mainPanel);
-        pack();
-        setVisible(true);
-        populateSearchType();
-
-        DefaultListModel<String> model = new DefaultListModel<>();
-        JList<String> list = new JList<>( model );
-
-        googleBooksList = new JScrollPane(googleBooks);
-        //googleBooksList = new JScrollPane(googleBooks);
-        //googleBooksModel = new DefaultListModel();
-        //googleBooks.setModel(googleBooksModel);
-
-
-        searchButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                String query = searchText.getText();
-                query = formatQuery(query);
-                findBook(query);
-            }
-        });
-        addButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-
-            }
-        });
-        removeButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                // TODO remove book from library list
-            }
-        });
-    }
-    private void populateSearchType(){
-        ArrayList<String> searchList = new ArrayList<String>();
-        searchList.add("Author");
-        searchList.add("ISBN");
-        searchList.add("Name");
-
-        for (String item : searchList){
-            searchBy.addItem(item);
-        }
-    }
-
-    private void findBook(String query) throws Exception{
+    private void findBook(String query) {
         String key = getKey();
         String baseURL = "https://www.googleapis.com/books/v1/volumes?q=%s&key=%s";
         String url = String.format(baseURL, query, key);
+        InputStream stream = null;
+        try {
+            stream = new URL(url).openConnection().getInputStream();
 
-        InputStream stream = new URL(url).openConnection().getInputStream();
+        }
+        catch (IOException ioe){
+            statusLabel.setText("IO exception");
+        }
         InputStreamReader reader = new InputStreamReader(stream);
         BufferedReader bufferedReader = new BufferedReader(reader);
 
         StringBuilder builder = new StringBuilder();
 
         String line;
-        while ((line = bufferedReader.readLine()) != null) {
-            builder.append(line);
+        try {
+            while ((line = bufferedReader.readLine()) != null) {
+                builder.append(line);
+            }
+        }catch (IOException ioe){
+            statusLabel.setText("Problem");
         }
-
         String responseString = builder.toString();
 
 
@@ -115,13 +77,69 @@ public class BookGUI extends JFrame{
                 googleRating = volumeInfo.getDouble("averageRating");
             }catch (JSONException je) {
                 System.out.println("No rating provided for this book.");
-        }
-        BookClass book = new BookClass(title,authors="none",publisher,description,isbn ="none",googleRating);
-        googleBooks.add(book);
+            }
+            BookClass book = new BookClass(title,authors="none",publisher,description,isbn ="none",googleRating);
+            allBooks.add(book);
 
 
+        }}
+
+
+
+
+
+    BookGUI(){
+        populateSearchType();
+
+        googleBooks = new JList<BookClass>();
+        googleBooksList = new JScrollPane(googleBooks);
+        setContentPane(mainPanel);
+        pack();
+
+        setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        googleBooksModel = new DefaultListModel<BookClass>();
+        googleBooks.setModel(googleBooksModel);
+        setVisible(true);
+
+
+        searchButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                String query = searchText.getText();
+                String formatedQuery = formatQuery(query);
+                findBook(formatedQuery);
+                setListData(allBooks);
+            }
+        });
+/*       addButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+
+            }
+        });
+        removeButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                // TODO remove book from library list
+            }
+        });*/
+    }
+    private void populateSearchType(){
+        ArrayList<String> searchList = new ArrayList<String>();
+        searchList.add("Author");
+        searchList.add("ISBN");
+        searchList.add("Name");
+
+        for (String item : searchList){
+            searchBy.addItem(item);
         }
     }
+
+    private String formatQuery(String query) {
+        query = query.replaceAll("\\s","+");
+        return query;
+    }
+
+
+
+
     private String getKey(){
         try {
             BufferedReader bufferedReader = new BufferedReader(new FileReader("key.txt"));
@@ -142,8 +160,12 @@ public class BookGUI extends JFrame{
         // TODO add the selected book to the library list
     }
 
-    private String formatQuery(String query){
-        query = query.replaceAll("\\s","+");
-        return query;
+
+    void setListData(ArrayList<BookClass> data){
+        googleBooksModel.clear();
+        for (BookClass book: data){
+            googleBooksModel.addElement(book);
+        }
     }
+
 }
