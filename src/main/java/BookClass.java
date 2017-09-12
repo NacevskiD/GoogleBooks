@@ -23,9 +23,6 @@ public class BookClass {
 
     }
 
-    String returnTitle(){
-        return this.title;
-    }
     public String toString(){
         return title + author + publisher + description + isbn + Double.toString(rating);
     }

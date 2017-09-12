@@ -17,9 +17,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Objects;
 
-/**
- * Created by David on 9/10/2017.
- */
 public class BookGUI extends JFrame{
 
     private JPanel mainPanel;
@@ -41,13 +38,16 @@ public class BookGUI extends JFrame{
     private JTextField buyLinkTextField;
     private JTextField descriptionTextField;
     private DefaultListModel<String> googleBooksModel;
-    private int searchType;
+    private int searchByType;
     ArrayList<BookClass> allBooks = new ArrayList<BookClass>();
 
 
     BookGUI(){
+        // Fills the jCOmboBox with choices of search type
         populateSearchType();
 
+        // sets action on pressing the exit button
+        // makes the googleBooksModel
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         googleBooksModel = new DefaultListModel<String>();
         googleBooks.setModel(googleBooksModel);
@@ -56,44 +56,55 @@ public class BookGUI extends JFrame{
         setVisible(true);
 
 
-
+        // action listener for the search button
         searchButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
+                // clearing the lists for a new search
                 allBooks.clear();
                 googleBooksModel.clear();
+                // getting the query and formating it to remove empty spaces and add "+"es
                 String query = searchText.getText();
                 String formatedQuery = formatQuery(query);
-                if (searchType ==0) {
+                // chooses the type of search based on the choice in the comboBox
+                if (searchByType ==0) {
+                    // search by title
                     findBook(formatedQuery);
                 }
-                else if (searchType == 1){
-                    findBookByISBN(query);
+                else if (searchByType == 1){
+                    // search by isbn
+                    findBookByISBN(formatedQuery);
 
                 }
-                else if(searchType ==2){
-                    findBOoksByAuthor(query);
+                else if(searchByType ==2){
+                    //search by author
+                    findBOoksByAuthor(formatedQuery);
 
                 }
-                else if (searchType == 3){
-                    findBooksByGenre(query);
+                // search by genre
+                else if (searchByType == 3){
+                    findBooksByGenre(formatedQuery);
                 }
+                // adds the results to the list in the GUI
                 setListData(allBooks);
             }
         });
-
+        // listener for a chosen book and to display information on the book
         googleBooks.addListSelectionListener(new ListSelectionListener() {
             @Override
             public void valueChanged(ListSelectionEvent e) {
                 int selected = googleBooks.getSelectedIndex();
+                // parses the information of the selected book to the info boxes
                 displaySelectedBook(selected);
             }
         });
+        //action listener for the type of search being perforemed
         searchBy.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                searchType = searchBy.getSelectedIndex();
+                searchByType = searchBy.getSelectedIndex();
             }
         });
+        // FUTURE CODE
 /*       addButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
 
@@ -105,6 +116,7 @@ public class BookGUI extends JFrame{
             }
         });*/
     }
+    // filling the type of searches
     private void populateSearchType(){
         ArrayList<String> searchList = new ArrayList<String>();
         searchList.add("Title");
@@ -116,11 +128,12 @@ public class BookGUI extends JFrame{
             searchBy.addItem(item);
         }
     }
-
+    // formating the query
     private String formatQuery(String query) {
         query = query.replaceAll("\\s","+");
         return query;
     }
+    // getting the API key from the key.txt file
     private String getKey(){
         try {
             BufferedReader bufferedReader = new BufferedReader(new FileReader("key.txt"));
@@ -137,12 +150,14 @@ public class BookGUI extends JFrame{
             return null;
         }
     }
+    // TODO
     private void addBookToLibrary(){
         // TODO add the selected book to the library list
     }
 
-
+    // adds teh books to the arrayList and displays them
     void setListData(ArrayList<BookClass> data){
+
 
         String[] names = new String[data.size()];
         int count = 0;
@@ -155,6 +170,7 @@ public class BookGUI extends JFrame{
 
 
     }
+    // searching books based on title
     private void findBook(String query) {
         String key = getKey();
         String baseURL = "https://www.googleapis.com/books/v1/volumes?q=%s&key=%s";
@@ -169,7 +185,6 @@ public class BookGUI extends JFrame{
         }
         InputStreamReader reader = new InputStreamReader(stream);
         BufferedReader bufferedReader = new BufferedReader(reader);
-
         StringBuilder builder = new StringBuilder();
 
         String line;
@@ -187,7 +202,7 @@ public class BookGUI extends JFrame{
         System.out.println(jsonObject.length());
 
         JSONArray items = jsonObject.getJSONArray("items");
-
+        // loops through all the books and gets info for all of them
         for (int count = 0; count != items.length();count++) {
             JSONObject volumeInfo = items.getJSONObject(count).getJSONObject("volumeInfo");
             String id = items.getJSONObject(count).getString("id");
@@ -231,13 +246,14 @@ public class BookGUI extends JFrame{
             }
             isbn = getIsbn(id);
             String buyLink = getBuyLink(id);
-
+            // adds the books to the book class
             BookClass book = new BookClass(title,authors,publisher,description,isbn,googleRating,buyLink);
+            // adds the book to the books list
             allBooks.add(book);
 
 
         }}
-
+    //gets the isbn of the book
     private String getIsbn(String id){
         String key = getKey();
         String baseURL = "https://www.googleapis.com/books/v1/volumes/%s?key=%s";
@@ -279,7 +295,7 @@ public class BookGUI extends JFrame{
 
         return isbn;
     }
-
+    //gets the buy link for the book
     private String getBuyLink(String id){
         String key = getKey();
         String baseURL = "https://www.googleapis.com/books/v1/volumes/%s?key=%s";
@@ -325,7 +341,7 @@ public class BookGUI extends JFrame{
 
 
 
-
+    // displays the information for the selected book
     private void displaySelectedBook(int selected){
         bookNameTextArea.setText(allBooks.get(selected).title);
         authorTextArea.setText(allBooks.get(selected).author);
@@ -335,7 +351,7 @@ public class BookGUI extends JFrame{
         descriptionTextArea.setText(allBooks.get(selected).description);
         buyLinkTextArea.setText(allBooks.get(selected).buyLink);
     }
-
+    // finds a book by the isbn number
     private void findBookByISBN(String isbn){
         String key = getKey();
         String baseURL = "https://www.googleapis.com/books/v1/volumes?q=isbn:%s&key=%s";
@@ -405,7 +421,7 @@ public class BookGUI extends JFrame{
             BookClass book = new BookClass(title,authors,publisher,description,isbn,googleRating,buyLink);
             allBooks.add(book);
     }
-
+    // finds a book by the author
     private void findBOoksByAuthor(String author){
         String key = getKey();
         String baseURL = "https://www.googleapis.com/books/v1/volumes?q=inauthor:%s&key=%s";
@@ -469,7 +485,7 @@ public class BookGUI extends JFrame{
             allBooks.add(book);
     }
 }
-
+    // finds a book by genre
     private void findBooksByGenre(String subject){
         String key = getKey();
         String baseURL = "https://www.googleapis.com/books/v1/volumes?q=subject:%s&key=%s";
